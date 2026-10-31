@@ -138,16 +138,22 @@ const fixStringNewLines = (node: types.namedTypes.File): types.namedTypes.File =
 		return str.replace(/\n/g, '\\n');
 	};
 	visit(node, {
-		visitTemplateElement(path) {
+		visitTemplateLiteral(path) {
 			this.traverse(path);
-			const el = b.templateElement(
-				{
-					cooked: path.node.value.cooked === null ? null : replace(path.node.value.cooked),
-					raw: replace(path.node.value.raw),
-				},
-				path.node.tail,
+			const quasis = path.node.quasis.map((quasi) =>
+				b.templateElement(
+					{
+						cooked: quasi.value.cooked === null ? null : replace(quasi.value.cooked),
+						raw: replace(quasi.value.raw),
+					},
+					quasi.tail,
+				),
 			);
-			path.replace(el);
+			// Replace the whole literal rather than its elements. recast patches a
+			// replaced element into the original source and pads it with a space when
+			// it ends in an identifier character followed by `${`, which would end up
+			// in the resulting string.
+			path.replace(b.templateLiteral(quasis, path.node.expressions));
 		},
 	});
 
